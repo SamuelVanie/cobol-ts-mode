@@ -51,6 +51,13 @@
                `(cobol . ,(alist-get 'cobol cobol-ts--treesit-settings)))
   (treesit-install-language-grammar 'cobol))
 
+(defun cobol-ts--free-format-p ()
+  "Check if the current buffer uses free format COBOL.
+Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
+  (save-excursion
+    (goto-char (point-min))
+    (re-search-forward "^>>SOURCE\\s-+\\(?:FORMAT\\s-+\\)?FREE" nil t)))
+
 (defun cobol-ts--fontify-text (node text override)
   "Fontify TEXT within NODE with `font-lock-keyword-face`."
   (let ((start (treesit-node-start node))
@@ -288,12 +295,22 @@
 
 ;;;###autoload
 (define-derived-mode cobol-ts-mode prog-mode "COBOL-TS"
-  "Major mode for editing COBOL files using tree-sitter."
+  "Major mode for editing COBOL files using tree-sitter.
+Supports fixed format COBOL with full tree-sitter features.
+For free format COBOL (>>SOURCE FORMAT FREE), provides basic
+keyword highlighting without tree-sitter."
   :group 'cobol-ts
   
+  ;; Check if this is a free format file
+  (if (cobol-ts--free-format-p)
+      (cobol-ts--setup-free-format)
+    (cobol-ts--setup-fixed-format)))
+
+(defun cobol-ts--setup-fixed-format ()
+  "Set up tree-sitter mode for fixed format COBOL."
   (unless (treesit-ready-p 'cobol)
     (error "Tree-sitter for COBOL isn't available"))
-
+  
   (treesit-parser-create 'cobol)
 
   ;; Comments
@@ -314,6 +331,100 @@
   (setq-local treesit-defun-type-regexp (rx (or "division" "section" "paragraph")))
 
   (treesit-major-mode-setup))
+
+(defun cobol-ts--setup-free-format ()
+  "Set up basic keyword highlighting for free format COBOL."
+  (message "Free format COBOL detected - using basic keyword highlighting")
+  
+  ;; Comments
+  (setq-local comment-start "*> ")
+  (setq-local comment-start-skip "\\*>\\s-*")
+  
+  ;; Use font-lock-defaults for keyword highlighting
+  (setq-local font-lock-defaults '((cobol-ts--free-format-keywords) nil t))
+  
+  ;; Simple indentation
+  (setq-local indent-line-function #'cobol-ts--free-format-indent-line)
+  
+  (font-lock-mode 1))
+
+(defvar cobol-ts--free-format-keywords
+  (list
+   ;; Comments
+   '("\\*>.*$" . font-lock-comment-face)
+   
+   ;; Strings
+   '("\"[^\"]*\"" . font-lock-string-face)
+   '("'[^']*'" . font-lock-string-face)
+   
+   ;; Numbers
+   '("\\<[0-9]+\\>" . font-lock-constant-face)
+   
+   ;; Division keywords
+   (cons (regexp-opt '("IDENTIFICATION" "ENVIRONMENT" "DATA" "PROCEDURE") 'symbols)
+         'font-lock-keyword-face)
+   '("\\<DIVISION\\>" . font-lock-keyword-face)
+   
+   ;; Section keywords
+   (cons (regexp-opt '("CONFIGURATION" "INPUT-OUTPUT" "FILE" "WORKING-STORAGE"
+                       "LINKAGE" "LOCAL-STORAGE" "FILE-CONTROL" "I-O-CONTROL") 'symbols)
+         'font-lock-keyword-face)
+   '("\\<SECTION\\>" . font-lock-keyword-face)
+   
+   ;; Program structure
+   (cons (regexp-opt '("PROGRAM-ID" "AUTHOR" "DATE-WRITTEN" "DATE-COMPILED"
+                       "INSTALLATION" "SECURITY" "SOURCE-COMPUTER" "OBJECT-COMPUTER") 'symbols)
+         'font-lock-keyword-face)
+   
+   ;; Data description
+   (cons (regexp-opt '("PIC" "PICTURE" "VALUE" "USAGE" "OCCURS" "REDEFINES"
+                       "COMP" "COMP-3" "BINARY" "PACKED-DECIMAL" "DISPLAY") 'symbols)
+         'font-lock-keyword-face)
+   
+   ;; Procedure keywords
+   (cons (regexp-opt '("PERFORM" "UNTIL" "VARYING" "FROM" "BY" "TIMES" "THRU" "THROUGH"
+                       "IF" "THEN" "ELSE" "END-IF"
+                       "EVALUATE" "WHEN" "END-EVALUATE"
+                       "MOVE" "TO" "CORRESPONDING"
+                       "ADD" "SUBTRACT" "MULTIPLY" "DIVIDE" "COMPUTE" "GIVING"
+                       "DISPLAY" "ACCEPT"
+                       "OPEN" "CLOSE" "READ" "WRITE" "REWRITE" "DELETE"
+                       "INPUT" "OUTPUT" "I-O" "EXTEND"
+                       "AT" "END" "NOT" "INVALID" "KEY" "INTO" "NEXT" "RECORD"
+                       "STOP" "RUN" "EXIT" "GOBACK" "CONTINUE"
+                       "CALL" "USING" "RETURNING"
+                       "INITIALIZE" "INSPECT" "STRING" "UNSTRING"
+                       "SEARCH" "ALL" "SET"
+                       "GO" "DEPENDING") 'symbols)
+         'font-lock-keyword-face)
+   
+   ;; End markers
+   (cons (regexp-opt '("END-PERFORM" "END-IF" "END-EVALUATE" "END-READ"
+                       "END-WRITE" "END-RETURN" "END-SEARCH" "END-STRING"
+                       "END-UNSTRING" "END-CALL" "END-COMPUTE" "END-ADD"
+                       "END-SUBTRACT" "END-MULTIPLY" "END-DIVIDE") 'symbols)
+         'font-lock-keyword-face))
+  "Font-lock keywords for free format COBOL.")
+
+
+(defun cobol-ts--free-format-indent-line ()
+  "Indent current line in free format COBOL."
+  (interactive)
+  (let ((indent-level
+         (save-excursion
+           (beginning-of-line)
+           (cond
+            ;; Division/section headers at column 0
+            ((looking-at "\\s-*\\(IDENTIFICATION\\|ENVIRONMENT\\|DATA\\|PROCEDURE\\)\\s-+DIVISION\\.")
+             0)
+            ((looking-at "\\s-*[A-Z][A-Z0-9-]*\\s-+SECTION\\.")
+             0)
+            ;; Paragraph headers at column 0  
+            ((looking-at "\\s-*[A-Z][A-Z0-9-]*\\.")
+             0)
+            ;; Inside paragraphs - indent by 4
+            (t 4)))))
+    (indent-line-to indent-level)))
   
 
 
