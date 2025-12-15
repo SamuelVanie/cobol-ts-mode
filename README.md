@@ -97,4 +97,4 @@ The tree-sitter grammar override configuration handles the COBOL grammar's upper
 
 ## License
 
-GNU General Public License v3 or later
+Do whatever you want

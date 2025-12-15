@@ -1,8 +1,8 @@
 ;;; cobol-ts-mode.el --- Tree-sitter support for COBOL  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2024  User
+;; Copyright (C) 2024  SamuelVanie
 
-;; Author: User
+;; Author: SamuelVanie
 ;; Keywords: languages, cobol, tree-sitter
 
 ;; This program is free software; you can redistribute it and/or modify
