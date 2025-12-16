@@ -1,24 +1,5 @@
 {
   "nodes": {
-    "emacs-package-flake": {
-      "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1686215586,
-        "narHash": "sha256-N64ouLQk08tedbqKz0z+v1oKcYyFay+VCsZyDAJJgDg=",
-        "owner": "mrkkrp",
-        "repo": "emacs-package-flake",
-        "rev": "031c8194252ddd345499583e852db8627741591e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mrkkrp",
-        "repo": "emacs-package-flake",
-        "type": "github"
-      }
-    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -41,20 +22,22 @@
       "locked": {
         "lastModified": 1765779637,
         "narHash": "sha256-KJ2wa/BLSrTqDjbfyNx70ov/HdgNBCBBSQP3BIzKnv4=",
-        "owner": "NixOS",
+        "owner": "nixos",
         "repo": "nixpkgs",
         "rev": "1306659b587dc277866c7b69eb97e5f07864d8c4",
         "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
+        "owner": "nixos",
         "ref": "nixos-unstable",
-        "type": "indirect"
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
-        "emacs-package-flake": "emacs-package-flake"
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs"
       }
     },
     "systems": {
