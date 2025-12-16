@@ -11,7 +11,7 @@
         cobol-ts-mode = pkgs.emacsPackages.trivialBuild {
           pname = "cobol-ts-mode";
           version = "0.1.0";
-          src = ./.;
+          src = self;
         };
       in
         {
