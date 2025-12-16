@@ -58,6 +58,37 @@ Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
     (goto-char (point-min))
     (re-search-forward "^>>SOURCE\\s-+\\(?:FORMAT\\s-+\\)?FREE" nil t)))
 
+(defvar cobol-ts-mode--syntax-table
+  (let ((table (make-syntax-table)))
+    ;; Arithmetic operators as punctuation
+    (modify-syntax-entry ?+   "."      table)
+    (modify-syntax-entry ?-   "."      table)
+    (modify-syntax-entry ?*   "."      table)
+    (modify-syntax-entry ?/   "."      table)
+    (modify-syntax-entry ?=   "."      table)
+    (modify-syntax-entry ?>   "."      table)
+    (modify-syntax-entry ?<   "."      table)
+    
+    ;; String delimiters - COBOL uses both ' and "
+    (modify-syntax-entry ?\'  "\""     table)
+    (modify-syntax-entry ?\"  "\""     table)
+    
+    ;; might handle this differently in tree-sitter rules
+    (modify-syntax-entry ?*   ". 1"    table)  ; comment starter
+    (modify-syntax-entry ?\n  "> "     table)  ; comment ender
+    
+    ;; Period is statement terminator in COBOL - mark as punctuation
+    (modify-syntax-entry ?.   "."      table)
+    
+    ;; Parentheses (for COMPUTE, CALL, etc.)
+    (modify-syntax-entry ?\(  "()"     table)
+    (modify-syntax-entry ?\)  ")("     table)
+    
+    table)
+  "Syntax table for `cobol-ts-mode'.")
+
+
+
 (defun cobol-ts--fontify-text (node text override)
   "Fontify TEXT within NODE with `font-lock-keyword-face`."
   (let ((start (treesit-node-start node))
@@ -287,11 +318,6 @@ Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
 
 
 
-(defvar cobol-ts-mode-syntax-table
-  (let ((table (make-syntax-table)))
-    (modify-syntax-entry ?- "w" table)
-    table)
-  "Syntax table for `cobol-ts-mode'.")
 
 ;;;###autoload
 (define-derived-mode cobol-ts-mode prog-mode "COBOL-TS"
