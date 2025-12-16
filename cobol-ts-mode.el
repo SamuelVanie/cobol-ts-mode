@@ -60,403 +60,300 @@ Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
 
 (defvar cobol-ts-mode--syntax-table
   (let ((table (make-syntax-table)))
-    ;; Arithmetic operators as punctuation
-    (modify-syntax-entry ?+   "."      table)
-    (modify-syntax-entry ?-   "."      table)
-    (modify-syntax-entry ?*   "."      table)
-    (modify-syntax-entry ?/   "."      table)
-    (modify-syntax-entry ?=   "."      table)
-    (modify-syntax-entry ?>   "."      table)
-    (modify-syntax-entry ?<   "."      table)
+    ;; Operators and arithmetic symbols as punctuation
+    (modify-syntax-entry ?+   "."     table)
+    (modify-syntax-entry ?*   "."     table)
+    (modify-syntax-entry ?/   "."     table)
+    (modify-syntax-entry ?=   "."     table)
+    (modify-syntax-entry ?<   "."     table)
+    (modify-syntax-entry ?>   "."     table)
+    (modify-syntax-entry ?&   "."     table)
+    (modify-syntax-entry ?|   "."     table)
+
+    ;; could be in variable's names
+    (modify-syntax-entry ?-   "w"     table)
+    (modify-syntax-entry ?_ "w" table)
     
-    ;; String delimiters - COBOL uses both ' and "
-    (modify-syntax-entry ?\'  "\""     table)
-    (modify-syntax-entry ?\"  "\""     table)
-    
-    ;; might handle this differently in tree-sitter rules
-    (modify-syntax-entry ?*   ". 1"    table)  ; comment starter
-    (modify-syntax-entry ?\n  "> "     table)  ; comment ender
-    
-    ;; Period is statement terminator in COBOL - mark as punctuation
-    (modify-syntax-entry ?.   "."      table)
-    
-    ;; Parentheses (for COMPUTE, CALL, etc.)
-    (modify-syntax-entry ?\(  "()"     table)
-    (modify-syntax-entry ?\)  ")("     table)
-    
+    ;; String delimiters - COBOL accepts both single and double quotes
+    (modify-syntax-entry ?\"  "\""    table)
+    (modify-syntax-entry ?\'  "\""    table)
+
+    ;; Parentheses
+    (modify-syntax-entry ?\(  "()"    table)
+    (modify-syntax-entry ?\)  ")("    table)
+
+    ;; Period and comma as punctuation
+    (modify-syntax-entry ?.   "."     table)
+    (modify-syntax-entry ?,   "."     table)
+    (modify-syntax-entry ?\;   "."     table)
+
     table)
   "Syntax table for `cobol-ts-mode'.")
 
-
-
-(defun cobol-ts--fontify-text (node text override)
-  "Fontify TEXT within NODE with `font-lock-keyword-face`."
-  (let ((start (treesit-node-start node))
-        (end (treesit-node-end node))
-        (case-fold-search t))
-    (save-excursion
-      (goto-char start)
-      (while (search-forward text end t)
-        (let ((match-start (match-beginning 0))
-              (match-end (match-end 0)))
-          ;; Check if we are inside a string or comment
-          (let ((node-at (treesit-node-at match-start)))
-            (unless (and (member (treesit-node-type node-at) '("string" "comment" "comment_entry"))
-                         (<= (treesit-node-start node-at) match-start))
-              (treesit-fontify-with-override
-               match-start match-end 'font-lock-keyword-face override))))))))
-
-(defun cobol-ts-fontify-keyword (node override start end &rest _)
-  "Fontify keywords for NODE."
-  (let ((type (treesit-node-type node)))
-    (pcase type
-      ;; Divisions
-      ("identification_division"
-       (cobol-ts--fontify-text node "IDENTIFICATION" override)
-       (cobol-ts--fontify-text node "DIVISION" override)
-       (cobol-ts--fontify-text node "PROGRAM-ID" override))
-      ("environment_division"
-       (cobol-ts--fontify-text node "ENVIRONMENT" override)
-       (cobol-ts--fontify-text node "DIVISION" override))
-      ("data_division"
-       (cobol-ts--fontify-text node "DATA" override)
-       (cobol-ts--fontify-text node "DIVISION" override))
-      ("procedure_division"
-       (cobol-ts--fontify-text node "PROCEDURE" override)
-       (cobol-ts--fontify-text node "DIVISION" override))
-      
-      ;; Sections
-      ("configuration_section"
-       (cobol-ts--fontify-text node "CONFIGURATION" override)
-       (cobol-ts--fontify-text node "SECTION" override))
-      ("working_storage_section"
-       (cobol-ts--fontify-text node "WORKING-STORAGE" override)
-       (cobol-ts--fontify-text node "SECTION" override))
-      ("file_section"
-       (cobol-ts--fontify-text node "FILE" override)
-       (cobol-ts--fontify-text node "SECTION" override))
-      ("linkage_section"
-       (cobol-ts--fontify-text node "LINKAGE" override)
-       (cobol-ts--fontify-text node "SECTION" override))
-      ("section_header"
-       (cobol-ts--fontify-text node "SECTION" override))
-
-      ("input_output_section"
-       (cobol-ts--fontify-text node "INPUT-OUTPUT" override)
-       (cobol-ts--fontify-text node "SECTION" override)
-       (cobol-ts--fontify-text node "FILE-CONTROL" override)
-       (cobol-ts--fontify-text node "I-O-CONTROL" override))
-
-      ;; Paragraphs
-      ("source_computer_paragraph" (cobol-ts--fontify-text node "SOURCE-COMPUTER" override))
-      ("object_computer_paragraph" (cobol-ts--fontify-text node "OBJECT-COMPUTER" override))
-      ("author_section" (cobol-ts--fontify-text node "AUTHOR" override))
-
-      ;; Statements
-      ("display_statement" (cobol-ts--fontify-text node "DISPLAY" override))
-      ("stop_statement" 
-       (cobol-ts--fontify-text node "STOP" override)
-       (cobol-ts--fontify-text node "RUN" override))
-
-      ("if_header" (cobol-ts--fontify-text node "IF" override))
-      ("else_header" (cobol-ts--fontify-text node "ELSE" override))
-      ("END_IF" (cobol-ts--fontify-text node "END-IF" override))
-      ("END_PERFORM" (cobol-ts--fontify-text node "END-PERFORM" override))
-      ("END_EVALUATE" (cobol-ts--fontify-text node "END-EVALUATE" override))
-
-      ("perform_statement_loop"
-       (cobol-ts--fontify-text node "PERFORM" override)
-       (cobol-ts--fontify-text node "UNTIL" override)
-       (cobol-ts--fontify-text node "VARYING" override)
-       (cobol-ts--fontify-text node "FROM" override)
-       (cobol-ts--fontify-text node "BY" override)
-       (cobol-ts--fontify-text node "TIMES" override))
-      ("perform_statement_call_proc"
-       (cobol-ts--fontify-text node "PERFORM" override)
-       (cobol-ts--fontify-text node "THRU" override))
-      ("move_statement"
-       (cobol-ts--fontify-text node "MOVE" override)
-       (cobol-ts--fontify-text node "TO" override)
-       (cobol-ts--fontify-text node "CORRESPONDING" override))
-      ("subtract_statement"
-       (cobol-ts--fontify-text node "SUBTRACT" override)
-       (cobol-ts--fontify-text node "FROM" override)
-       (cobol-ts--fontify-text node "GIVING" override))
-      ("multiply_statement"
-       (cobol-ts--fontify-text node "MULTIPLY" override)
-       (cobol-ts--fontify-text node "BY" override)
-       (cobol-ts--fontify-text node "GIVING" override))
-
-      ("open_statement"
-       (cobol-ts--fontify-text node "OPEN" override)
-       (cobol-ts--fontify-text node "INPUT" override)
-       (cobol-ts--fontify-text node "OUTPUT" override)
-       (cobol-ts--fontify-text node "I-O" override)
-       (cobol-ts--fontify-text node "EXTEND" override))
-      ("read_statement"
-       (cobol-ts--fontify-text node "READ" override)
-       (cobol-ts--fontify-text node "NEXT" override)
-       (cobol-ts--fontify-text node "RECORD" override)
-       (cobol-ts--fontify-text node "INTO" override)
-       (cobol-ts--fontify-text node "AT" override)
-       (cobol-ts--fontify-text node "END" override)
-       (cobol-ts--fontify-text node "NOT" override)
-       (cobol-ts--fontify-text node "INVALID" override)
-       (cobol-ts--fontify-text node "KEY" override))
-      ("rewrite_statement" (cobol-ts--fontify-text node "REWRITE" override))
-      
-      ;; Clauses
-      ("picture_clause"
-       (cobol-ts--fontify-text node "PICTURE" override)
-       (cobol-ts--fontify-text node "PIC" override))
-      ("value_clause" (cobol-ts--fontify-text node "VALUE" override))
-      ("usage_clause"
-       (cobol-ts--fontify-text node "USAGE" override)
-       (cobol-ts--fontify-text node "COMP" override)
-       (cobol-ts--fontify-text node "COMP-3" override)
-       (cobol-ts--fontify-text node "BINARY" override)
-       (cobol-ts--fontify-text node "DISPLAY" override)
-       (cobol-ts--fontify-text node "INDEX" override)
-       (cobol-ts--fontify-text node "PACKED-DECIMAL" override))
-
-      )))
-
-(defvar cobol-ts--font-lock-settings
-  (treesit-font-lock-rules
-   :language 'cobol
-   :feature 'comment
-   '((comment) @font-lock-comment-face
-     (comment_entry) @font-lock-comment-face)
-
-   :language 'cobol
-   :feature 'string
-   '((string) @font-lock-string-face)
-
-   :language 'cobol
-   :feature 'number
-   '((number) @font-lock-number-face
-     (integer) @font-lock-number-face
-     (level_number) @font-lock-number-face)
-
-   :language 'cobol
-   :feature 'keyword
-
-   '(((identification_division) @cobol-ts-fontify-keyword)
-     ((environment_division) @cobol-ts-fontify-keyword)
-     ((data_division) @cobol-ts-fontify-keyword)
-     ((procedure_division) @cobol-ts-fontify-keyword)
-     ((configuration_section) @cobol-ts-fontify-keyword)
-     ((working_storage_section) @cobol-ts-fontify-keyword)
-     ((section_header) @cobol-ts-fontify-keyword)
-     ((source_computer_paragraph) @cobol-ts-fontify-keyword)
-     ((object_computer_paragraph) @cobol-ts-fontify-keyword)
-     ((author_section) @cobol-ts-fontify-keyword)
-     ((display_statement) @cobol-ts-fontify-keyword)
-     ((stop_statement) @cobol-ts-fontify-keyword)
-     ((if_header) @cobol-ts-fontify-keyword)
-     ((else_header) @cobol-ts-fontify-keyword)
-     ((END_IF) @cobol-ts-fontify-keyword)
-     ((perform_statement_loop) @cobol-ts-fontify-keyword)
-     ((END_PERFORM) @cobol-ts-fontify-keyword)
-     ((picture_clause) @cobol-ts-fontify-keyword)
-     ((value_clause) @cobol-ts-fontify-keyword))
-
-   :language 'cobol
-   :feature 'definition
-    '((program_name) @font-lock-function-name-face
-      (section_header) @font-lock-type-face
-      (paragraph_header) @font-lock-function-name-face
-      (data_description (entry_name) @font-lock-variable-name-face)
-      (select_statement file_name: (_) @font-lock-variable-name-face))
-
-   :language 'cobol
-   :feature 'type
-   '((picture_clause (_) @font-lock-type-face)
-     (usage_clause (_) @font-lock-type-face))
-   )
-  "Tree-sitter font-lock settings for `cobol-ts-mode'.")
-
-(defvar cobol-ts--indent-rules
+(defvar cobol-ts-mode--indent-rules-free-format
   `((cobol
-     ((parent-is "source_text") column-0 0)
-     ((node-is "identification_division") parent-bol 0)
-     ((node-is "environment_division") parent-bol 0)
-     ((node-is "data_division") parent-bol 0)
-     ((node-is "procedure_division") parent-bol 0)
-     ((node-is "section_header") parent-bol 0)
-     ((node-is "paragraph_header") parent-bol 0)
-     
-     ;; Inside divisions
+     ;; Free format: logical indentation only, no column restrictions
+
+     ;; Top-level structure - no indentation
+     ((node-is "^program_definition$") column-0 0)
+
+     ;; Divisions - start at column 0 in free format
+     ((node-is "identification_division") column-0 0)
+     ((node-is "environment_division") column-0 0)
+     ((node-is "data_division") column-0 0)
+     ((node-is "procedure_division") column-0 0)
+     ((node-is "function_division") column-0 0)
+
+     ;; Sections - indent from their parent division
      ((parent-is "identification_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "environment_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "data_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "procedure_division") parent-bol cobol-ts-mode-indent-offset)
-     
-     ;; Inside sections
+     ((parent-is "function_division") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Configuration and I/O sections
+     ((parent-is "configuration_section") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "input_output_section") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Data description sections
      ((parent-is "working_storage_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "linkage_section") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "file_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "section") parent-bol cobol-ts-mode-indent-offset)
-     
-     ;; Inside paragraphs
-     ((parent-is "paragraph") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "linkage_section") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "local_storage_section") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "screen_section") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "report_section") parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Data descriptions
+     ;; Paragraphs in configuration section
+     ((parent-is "source_computer_paragraph") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "object_computer_paragraph") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "special_names_paragraph") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "repository_paragraph") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Data and file descriptions
      ((parent-is "data_description") parent-bol cobol-ts-mode-indent-offset)
-     
-     ;; Statements (nested)
-     ((parent-is "perform_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "perform_statement_loop") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "if_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "evaluate_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "read_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "write_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "display_statement") prev-line cobol-ts-mode-indent-offset)
-     ((parent-is "sentence") parent-bol 0)
-     ))
-  "Tree-sitter indentation rules for `cobol-ts-mode'.")
+     ((parent-is "file_description") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Section headers - align with parent
+     ((node-is "section_header") parent-bol 0)
+     ((parent-is "section_header") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Paragraph headers - align with parent
+     ((node-is "paragraph_header") parent-bol 0)
+     ((parent-is "paragraph_header") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Perform statements
+     ((parent-is "perform_statement_call_proc") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "perform_statement_loop") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "perform_procedure") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "perform_option") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "perform_varying") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "perform_test") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; If-then-else structures
+     ((parent-is "if_header") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "else_if_header") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "else_if_header") parent-bol 0)
+     ((node-is "else_header") parent-bol 0)
+     ((parent-is "else_header") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Evaluate (COBOL's switch/case)
+     ((parent-is "evaluate_header") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "evaluate_subject") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "when") parent-bol 0)
+     ((parent-is "when") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "when_other") parent-bol 0)
+     ((parent-is "when_other") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Search statement
+     ((parent-is "search_statement") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Exception handlers for I/O operations
+     ((node-is "at_end") parent-bol 0)
+     ((parent-is "at_end") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "not_at_end") parent-bol 0)
+     ((parent-is "not_at_end") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "invalid_key") parent-bol 0)
+     ((parent-is "invalid_key") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "not_invalid_key") parent-bol 0)
+     ((parent-is "not_invalid_key") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "eop") parent-bol 0)
+     ((parent-is "eop") parent-bol cobol-ts-mode-indent-offset)
+     ((node-is "not_eop") parent-bol 0)
+     ((parent-is "not_eop") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Common statements
+     ((parent-is "accept_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "add_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "call_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "compute_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "delete_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "display_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "divide_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "initialize_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "inspect_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "move_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "multiply_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "read_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "rewrite_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "string_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "subtract_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "unstring_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "write_statement") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; I/O and control flow
+     ((parent-is "open_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "close_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "goto_statement") parent-bol cobol-ts-mode-indent-offset)
+     ((parent-is "merge_statement") parent-bol cobol-ts-mode-indent-offset)
+
+     ;; Default: no additional indentation
+     (no-node parent-bol 0)))
+  "Tree-sitter indent rules for `cobol-ts-mode' in free format.")
+
+(defcustom cobol-ts-mode-area-a-column 7
+  "Column number for Area A in fixed format COBOL (0-indexed).
+Area A is where divisions, sections, and paragraphs start.
+Traditional COBOL uses column 7 (8th column, after the indicator area)."
+  :type 'integer
+  :safe 'integerp
+  :group 'cobol-ts)
+
+(defvar cobol-ts-mode--indent-rules-fixed-format
+  `((cobol
+     ;; Fixed format: respects traditional COBOL column areas
+     ;; Area A (columns 8-11): Divisions, sections, paragraphs
+     ;; Area B (columns 12-72): Statements
+
+     ;; Top-level structure
+     ((node-is "^program_definition$") column-0 0)
+
+     ;; Divisions - start at Area A (column 7, 0-indexed)
+     ((node-is "identification_division") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "environment_division") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "data_division") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "procedure_division") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "function_division") column-0 ,cobol-ts-mode-area-a-column)
+
+     ;; Sections - also start at Area A
+     ((node-is "configuration_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "input_output_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "file_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "working_storage_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "linkage_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "local_storage_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "screen_section") column-0 ,cobol-ts-mode-area-a-column)
+     ((node-is "report_section") column-0 ,cobol-ts-mode-area-a-column)
+
+     ;; Section headers in procedure division - also Area A
+     ((node-is "section_header") column-0 ,cobol-ts-mode-area-a-column)
+
+     ;; Paragraph headers - also Area A
+     ((node-is "paragraph_header") column-0 ,cobol-ts-mode-area-a-column)
+
+     ;; Everything else goes to Area B (column 11, which is Area A + 4)
+     ;; Statements under sections
+     ((parent-is "identification_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "environment_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "data_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "procedure_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "function_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Configuration and I/O sections content - Area B
+     ((parent-is "configuration_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "input_output_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Data description sections content - Area B
+     ((parent-is "working_storage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "file_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "linkage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "local_storage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "screen_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "report_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Paragraphs in configuration section - Area B
+     ((parent-is "source_computer_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "object_computer_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "special_names_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "repository_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Data and file descriptions - Area B
+     ((parent-is "data_description") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "file_description") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Statements under section header - Area B
+     ((parent-is "section_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Statements under paragraph - Area B
+     ((parent-is "paragraph_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+
+     ;; Perform statements and children - Area B with additional indent
+     ((parent-is "perform_statement_call_proc") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "perform_statement_loop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "perform_procedure") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "perform_option") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "perform_varying") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "perform_test") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; If-then-else structures - Area B with additional indent
+     ((parent-is "if_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "else_if_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "else_if_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((node-is "else_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "else_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; Evaluate (COBOL's switch/case) - Area B
+     ((parent-is "evaluate_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "evaluate_subject") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "when") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "when") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "when_other") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "when_other") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; Search statement - Area B
+     ((parent-is "search_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; Exception handlers for I/O operations - Area B
+     ((node-is "at_end") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "at_end") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "not_at_end") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "not_at_end") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "not_invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "not_invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "eop") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "eop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((node-is "not_eop") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ((parent-is "not_eop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; Common statements - Area B with additional indent for nested content
+     ((parent-is "accept_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "add_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "call_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "compute_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "delete_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "display_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "divide_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "initialize_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "inspect_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "move_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "multiply_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "read_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "rewrite_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "string_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "subtract_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "unstring_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "write_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; I/O and control flow - Area B
+     ((parent-is "open_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "close_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "goto_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ((parent-is "merge_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+
+     ;; Default: Area B
+     (no-node column-0 ,(+ cobol-ts-mode-area-a-column 4))))
+  "Tree-sitter indent rules for `cobol-ts-mode' in fixed format.")
 
 
 
-
-;;;###autoload
-(define-derived-mode cobol-ts-mode prog-mode "COBOL-TS"
-  "Major mode for editing COBOL files using tree-sitter.
-Supports fixed format COBOL with full tree-sitter features.
-For free format COBOL (>>SOURCE FORMAT FREE), provides basic
-keyword highlighting without tree-sitter."
-  :group 'cobol-ts
-  
-  ;; Check if this is a free format file
-  (if (cobol-ts--free-format-p)
-      (cobol-ts--setup-free-format)
-    (cobol-ts--setup-fixed-format)))
-
-(defun cobol-ts--setup-fixed-format ()
-  "Set up tree-sitter mode for fixed format COBOL."
-  (unless (treesit-ready-p 'cobol)
-    (error "Tree-sitter for COBOL isn't available"))
-  
-  (treesit-parser-create 'cobol)
-
-  ;; Comments
-  (setq-local comment-start "*")
-  (setq-local comment-start-skip "\\*+\\s-*")
-
-  ;; Font-lock
-  (setq-local treesit-font-lock-settings cobol-ts--font-lock-settings)
-  (setq-local treesit-font-lock-feature-list
-              '((comment definition)
-                (keyword string type number)
-                () ()))
-
-  ;; Indentation
-  (setq-local treesit-simple-indent-rules cobol-ts--indent-rules)
-
-  ;; Navigation
-  (setq-local treesit-defun-type-regexp (rx (or "division" "section" "paragraph")))
-
-  (treesit-major-mode-setup))
-
-(defun cobol-ts--setup-free-format ()
-  "Set up basic keyword highlighting for free format COBOL."
-  (message "Free format COBOL detected - using basic keyword highlighting")
-  
-  ;; Comments
-  (setq-local comment-start "*> ")
-  (setq-local comment-start-skip "\\*>\\s-*")
-  
-  ;; Use font-lock-defaults for keyword highlighting
-  (setq-local font-lock-defaults '((cobol-ts--free-format-keywords) nil t))
-  
-  ;; Simple indentation
-  (setq-local indent-line-function #'cobol-ts--free-format-indent-line)
-  
-  (font-lock-mode 1))
-
-(defvar cobol-ts--free-format-keywords
-  (list
-   ;; Comments
-   '("\\*>.*$" . font-lock-comment-face)
-   
-   ;; Strings
-   '("\"[^\"]*\"" . font-lock-string-face)
-   '("'[^']*'" . font-lock-string-face)
-   
-   ;; Numbers
-   '("\\<[0-9]+\\>" . font-lock-constant-face)
-   
-   ;; Division keywords
-   (cons (regexp-opt '("IDENTIFICATION" "ENVIRONMENT" "DATA" "PROCEDURE") 'symbols)
-         'font-lock-keyword-face)
-   '("\\<DIVISION\\>" . font-lock-keyword-face)
-   
-   ;; Section keywords
-   (cons (regexp-opt '("CONFIGURATION" "INPUT-OUTPUT" "FILE" "WORKING-STORAGE"
-                       "LINKAGE" "LOCAL-STORAGE" "FILE-CONTROL" "I-O-CONTROL") 'symbols)
-         'font-lock-keyword-face)
-   '("\\<SECTION\\>" . font-lock-keyword-face)
-   
-   ;; Program structure
-   (cons (regexp-opt '("PROGRAM-ID" "AUTHOR" "DATE-WRITTEN" "DATE-COMPILED"
-                       "INSTALLATION" "SECURITY" "SOURCE-COMPUTER" "OBJECT-COMPUTER") 'symbols)
-         'font-lock-keyword-face)
-   
-   ;; Data description
-   (cons (regexp-opt '("PIC" "PICTURE" "VALUE" "USAGE" "OCCURS" "REDEFINES"
-                       "COMP" "COMP-3" "BINARY" "PACKED-DECIMAL" "DISPLAY") 'symbols)
-         'font-lock-keyword-face)
-   
-   ;; Procedure keywords
-   (cons (regexp-opt '("PERFORM" "UNTIL" "VARYING" "FROM" "BY" "TIMES" "THRU" "THROUGH"
-                       "IF" "THEN" "ELSE" "END-IF"
-                       "EVALUATE" "WHEN" "END-EVALUATE"
-                       "MOVE" "TO" "CORRESPONDING"
-                       "ADD" "SUBTRACT" "MULTIPLY" "DIVIDE" "COMPUTE" "GIVING"
-                       "DISPLAY" "ACCEPT"
-                       "OPEN" "CLOSE" "READ" "WRITE" "REWRITE" "DELETE"
-                       "INPUT" "OUTPUT" "I-O" "EXTEND"
-                       "AT" "END" "NOT" "INVALID" "KEY" "INTO" "NEXT" "RECORD"
-                       "STOP" "RUN" "EXIT" "GOBACK" "CONTINUE"
-                       "CALL" "USING" "RETURNING"
-                       "INITIALIZE" "INSPECT" "STRING" "UNSTRING"
-                       "SEARCH" "ALL" "SET"
-                       "GO" "DEPENDING") 'symbols)
-         'font-lock-keyword-face)
-   
-   ;; End markers
-   (cons (regexp-opt '("END-PERFORM" "END-IF" "END-EVALUATE" "END-READ"
-                       "END-WRITE" "END-RETURN" "END-SEARCH" "END-STRING"
-                       "END-UNSTRING" "END-CALL" "END-COMPUTE" "END-ADD"
-                       "END-SUBTRACT" "END-MULTIPLY" "END-DIVIDE") 'symbols)
-         'font-lock-keyword-face))
-  "Font-lock keywords for free format COBOL.")
-
-
-(defun cobol-ts--free-format-indent-line ()
-  "Indent current line in free format COBOL."
-  (interactive)
-  (let ((indent-level
-         (save-excursion
-           (beginning-of-line)
-           (cond
-            ;; Division/section headers at column 0
-            ((looking-at "\\s-*\\(IDENTIFICATION\\|ENVIRONMENT\\|DATA\\|PROCEDURE\\)\\s-+DIVISION\\.")
-             0)
-            ((looking-at "\\s-*[A-Z][A-Z0-9-]*\\s-+SECTION\\.")
-             0)
-            ;; Paragraph headers at column 0  
-            ((looking-at "\\s-*[A-Z][A-Z0-9-]*\\.")
-             0)
-            ;; Inside paragraphs - indent by 4
-            (t 4)))))
-    (indent-line-to indent-level)))
-  
-
-
-(add-to-list 'auto-mode-alist '("\\.cob\\'" . cobol-ts-mode))
-(add-to-list 'auto-mode-alist '("\\.cbl\\'" . cobol-ts-mode))
-(add-to-list 'auto-mode-alist '("\\.cpy\\'" . cobol-ts-mode))
-
-(provide 'cobol-ts-mode)
-;;; cobol-ts-mode.el ends here
