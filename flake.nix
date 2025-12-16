@@ -1,29 +1,13 @@
 {
-  description = "Nix for cobol-ts-mode";
+  description = "COBOL major mode with tree-sitter support";
+
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    emacs-package-flake.url = "github:mrkkrp/emacs-package-flake";
   };
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        cobol-ts-mode = pkgs.emacsPackages.trivialBuild {
-          pname = "cobol-ts-mode";
-          version = "0.1.0";
-          src = self;
-        };
-      in
-        {
-          packages = {
-            default = cobol-ts-mode;
-            cobol-ts-mode = cobol-ts-mode;
-          };
-          
-          # This makes it searchable by devbox
-          legacyPackages = {
-            cobol-ts-mode = cobol-ts-mode;
-          };
-        }
-    );
+
+  outputs = { self, emacs-package-flake }:
+    emacs-package-flake.lib.mkFlake {
+      src = ./.;
+      packageName = "cobol-ts-mode";
+    };
 }
