@@ -443,20 +443,15 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 
     :language cobol
     :feature number
-    ([(integer) (decimal) (number)] @font-lock-number-face)
+    ([(integer) (decimal) (number)] @font-lock-constant-face)
 
     :language cobol
     :feature operator
-    (["+" "-" "*" "/" "**" "=" ">" "<" ">=" "<="] @font-lock-operator-face)
+    (["+" "-" "*" "/" "**" "=" ">" "<" ">=" "<="] @font-lock-constant-face)
 
     :language cobol
     :feature delimiter
-    (["." "," ";" ":"] @font-lock-delimiter-face)
-
-    :language cobol
-    :feature bracket
-    (["(" ")" "[" "]"] @font-lock-bracket-face)
-
+    (["." "," ";" ":"] @font-lock-constant-face)
 
     :language cobol
     :feature type
@@ -590,26 +585,21 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 
     :language cobol
     :feature function
-    ;; Intrinsic functions
-    ((function_) @font-lock-function-call-face)
-
-    :language cobol
-    :feature function
     ;; Function names as constants (built-in function keywords)
     ([(CURRENT_DATE_FUNC) (LOCALE_DT_FUNC) (LOWER_CASE_FUNC)
       (UPPER_CASE_FUNC) (REVERSE_FUNC) (TRIM_FUNCTION)
       (CONCATENATE_FUNC) (NUMVALC_FUNC) (SUBSTITUTE_FUNC)
-      (SUBSTITUTE_CASE_FUNC) (WHEN_COMPILED_FUNC)] @font-lock-function-call-face)
+      (SUBSTITUTE_CASE_FUNC) (WHEN_COMPILED_FUNC)] @font-lock-function-name-face)
 
     :language cobol
     :feature definition
     ;; Level numbers in data descriptions - make them stand out
-    ((data_description (level_number) @font-lock-property-face))
+    ((data_description (level_number) @font-lock-preprocessor-face))
 
     :language cobol  
     :feature definition
     ;; Special level 88 for condition names
-    ((level_number_88) @font-lock-property-face)
+    ((level_number_88) @font-lock-preprocessor-face)
     
     :language cobol
     :feature error
