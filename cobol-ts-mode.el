@@ -583,8 +583,15 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 
     ;; Font-lock
     (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
-    
 
+    ;; fallback for the different keywords
+    (font-lock-add-keywords
+     'cobol-ts-mode
+     `((,(regexp-opt cobol-ts-mode--keywords 'words) . font-lock-keyword-face)
+       (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)
+       (,(regexp-opt cobol-ts-mode--operators 'words) . font-lock-builtin-face)))
+
+    
     ;; Indentation - use fixed format rules
     ;; Note: The tree-sitter grammar only supports fixed-format COBOL
     (setq-local treesit-simple-indent-rules
