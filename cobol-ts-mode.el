@@ -434,105 +434,184 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 (defvar cobol-ts-mode--font-lock-settings
   '(
     :language cobol
-    :override t
     :feature comment
     ((comment) @font-lock-comment-face)
 
     :language cobol
-    :override t
     :feature string
     ([(string) (h_string) (x_string) (n_string)] @font-lock-string-face)
 
     :language cobol
-    :override t
     :feature number
     ([(integer) (decimal) (number)] @font-lock-number-face)
 
     :language cobol
-    :override t
-    :feature constant
-    (;; Note: Most COBOL constants appear as regular identifiers in the parse tree
-      ;; We highlight specific constant-like nodes that do appear
-      (SPACE) @font-lock-constant-face)
-
-    :language cobol
-    :override t
-    :feature keyword
-    (;; Keywords that commonly appear in parse trees
-      (COMP) @font-lock-keyword-face
-      (FOREVER) @font-lock-keyword-face
-      (END_ACCEPT) @font-lock-keyword-face
-      (END_IF) @font-lock-keyword-face
-      (END_PERFORM) @font-lock-keyword-face)
-
-    :language cobol
-    :override t
     :feature operator
     (["+" "-" "*" "/" "**" "=" ">" "<" ">=" "<="] @font-lock-operator-face)
 
     :language cobol
-    :override t
     :feature delimiter
     (["." "," ";" ":"] @font-lock-delimiter-face)
 
     :language cobol
-    :override t
     :feature bracket
     (["(" ")" "[" "]"] @font-lock-bracket-face)
 
+
     :language cobol
-    :override t
     :feature type
-    (;; Picture clauses
-      (picture_clause) @font-lock-type-face
-      (picture_x) @font-lock-type-face
-      (picture_n) @font-lock-type-face
-      (picture_9) @font-lock-type-face
-      (picture_a) @font-lock-type-face
-      (picture_edit) @font-lock-type-face
-
-      ;; Data types
-      [(BINARY) (BINARY_CHAR) (BINARY_C_LONG) (BINARY_DOUBLE) (BINARY_LONG) (BINARY_SHORT)
-       (COMP) (COMPUTATIONAL) (COMP_1) (COMP_2) (COMP_3) (COMP_4) (COMP_5) (COMP_X)
-       (DISPLAY) (INDEX) (PACKED_DECIMAL) (POINTER)] @font-lock-type-face)
+    ((picture_clause) @font-lock-type-face
+     (picture_x) @font-lock-type-face
+     (picture_n) @font-lock-type-face
+     (picture_9) @font-lock-type-face
+     (picture_a) @font-lock-type-face
+     (picture_edit) @font-lock-type-face)
 
     :language cobol
-    :override t
-    :feature level-number
-    ((level_number) @font-lock-number-face)
+    :feature type
+    ;; Usage types - expand existing list
+    ([(BINARY) (BINARY_CHAR) (BINARY_SHORT) (BINARY_LONG) 
+      (BINARY_DOUBLE) (BINARY_C_LONG)
+      (COMP) (COMP_1) (COMP_2) (COMP_3) (COMP_4) (COMP_5) (COMP_X)
+      (COMPUTATIONAL)
+      (DISPLAY) (INDEX) (PACKED_DECIMAL) (POINTER)
+      (PROGRAM_POINTER)
+      (SIGNED_SHORT) (SIGNED_INT) (SIGNED_LONG)
+      (UNSIGNED_SHORT) (UNSIGNED_INT) (UNSIGNED_LONG)
+      (NATIONAL) (NATIONAL_EDITED)] @font-lock-type-face)
 
     :language cobol
-    :override t
-    :feature statement
-    (;; All statement types that exist in the grammar
-      [(accept_statement) (add_statement) (allocate_statement) (alter_statement)
-       (call_statement) (cancel_statement) (close_statement) (compute_statement)
-       (continue_statement) (copy_statement) (delete_statement) (display_statement)
-       (divide_statement) (exit_statement) (goback_statement) (goto_statement)
-       (initialize_statement) (inspect_statement) (merge_statement) (move_statement)
-       (multiply_statement) (next_sentence_statement) (open_statement)
-       (perform_statement_loop) (perform_statement_call_proc) (read_statement)
-       (release_statement) (return_statement) (rewrite_statement) (search_statement)
-       (select_statement) (set_statement) (sort_statement) (start_statement)
-       (stop_statement) (string_statement) (subtract_statement) (unstring_statement)
-       (use_statement) (write_statement)] @font-lock-builtin-face)
+    :feature division
+    ([(identification_division)
+      (environment_division)
+      (data_division)
+      (procedure_division)] @font-lock-preprocessor-face)
 
     :language cobol
-    :override t
-    :feature program-name
+    :feature section
+    ([(configuration_section)
+      (input_output_section)
+      (file_section)
+      (working_storage_section)
+      (local_storage_section)
+      (linkage_section)
+      (report_section)
+      (screen_section)] @font-lock-keyword-face)
+
+
+    :language cobol
+    :feature paragraph
+    ((section_header) @font-lock-keyword-face)
+
+    :language cobol
+    :feature paragraph
+    ((paragraph_header) @font-lock-function-name-face)
+
+    :language cobol
+    :feature builtin
+    ;; Major statement types - use a more visible face
+    ([(accept_statement) (display_statement) (write_statement)
+      (open_statement) (close_statement) (call_statement)
+      (perform_statement_loop) (perform_statement_call_proc)
+      (move_statement) (compute_statement) (initialize_statement)
+      (add_statement) (subtract_statement) (multiply_statement) (divide_statement) (string_statement) (unstring_statement) (inspect_statement) (search_statement) (sort_statement)
+      (merge_statement) (set_statement) (allocate_statement) (delete_statement) (rewrite_statement) (start_statement)
+      (release_statement) (return_statement) (goto_statement)
+      (exit_statement) (stop_statement)] @font-lock-builtin-face)
+
+    :language cobol
+    :feature keyword
+    ;; Data division keywords
+    ([(occurs_clause) (redefines_clause) (picture_clause) (value_of_clause) (usage_clause) (synchronized_clause) (justified_clause) (blank_clause) (sign_clause) (external_clause) (global_clause) (based_clause)] @font-lock-keyword-face)
+
+    :language cobol
+    :feature keyword
+    ;; Scope terminators - important for readability
+    ([(END_IF) (END_PERFORM) (END_EVALUATE) (END_READ)
+      (END_ACCEPT) (END_ADD) (END_CALL) (END_COMPUTE)
+      (END_DELETE) (END_DISPLAY) (END_DIVIDE) (END_MULTIPLY)
+      (END_RETURN) (END_REWRITE) (END_SEARCH) (END_START)
+      (END_STRING) (END_SUBTRACT) (END_UNSTRING) (END_WRITE)] @font-lock-keyword-face)
+
+
+    :language cobol
+    :feature control-flow
+    ;; Conditional structures
+    ([(if_header) (else_if_header) (else_header)
+      (evaluate_header) (when) (when_other)] @font-lock-keyword-face)
+
+    :language cobol
+    :feature control-flow
+    ;; Loop structures
+    ([(perform_statement_loop) (perform_statement_call_proc)
+      (perform_varying) (perform_test)] @font-lock-keyword-face)
+
+    :language cobol
+    :feature control-flow
+    ;; Exception handlers
+    ([(on_exception) (not_on_exception)
+      (on_size_error) (not_on_size_error)
+      (on_overflow) (not_on_overflow)
+      (at_end) (not_at_end)
+      (eop) (not_eop)
+      (invalid_key) (not_invalid_key)] @font-lock-warning-face)
+
+    :language cobol
+    :feature control-flow
+    ;; Control transfer
+    ([(goto_statement) (goback_statement) (exit_statement)
+      (stop_statement) (next_sentence_statement)] @font-lock-keyword-face)
+
+
+    :language cobol
+    :feature constant
+    ;; Figurative constants
+    ([(SPACE) (ZERO) (ZEROS)
+      (HIGH_VALUE) (LOW_VALUE)
+      (QUOTE) (TOK_NULL)
+      (TRUE) (FALSE)] @font-lock-constant-face)
+
+    :language cobol
+    :feature constant
+    ;; Special identifiers
+    ([(POSITIVE) (NEGATIVE) (ALPHABETIC) (ALPHABETIC_LOWER) (ALPHABETIC_UPPER)
+      (ALPHANUMERIC) (ALPHANUMERIC_EDITED) (NUMERIC) (NUMERIC_EDITED)
+      (OMITTED)] @font-lock-constant-face)
+
+    :language cobol
+    :feature constant
+    ;; Reserved words with constant-like meaning
+    ([(FILLER)] @font-lock-constant-face)
+
+    :language cobol
+    :feature variable
+    ;; Special program identifiers
     ((program_name) @font-lock-constant-face)
 
     :language cobol
-    :override t
-    :feature variable
-    (;; Entry names (data items)
-      (entry_name) @font-lock-variable-name-face
-
-      ;; Qualified data names
-      (qualified_word) @font-lock-variable-use-face)
+    :feature function
+    ;; Intrinsic functions
+    ((function_) @font-lock-function-call-face)
 
     :language cobol
-    :override t
+    :feature function
+    ;; Function names as constants (built-in function keywords)
+    ([(CURRENT_DATE_FUNC) (LOCALE_DT_FUNC) (LOWER_CASE_FUNC)
+      (UPPER_CASE_FUNC) (REVERSE_FUNC) (TRIM_FUNCTION)
+      (CONCATENATE_FUNC) (NUMVALC_FUNC) (SUBSTITUTE_FUNC)
+      (SUBSTITUTE_CASE_FUNC) (WHEN_COMPILED_FUNC)] @font-lock-function-call-face)
+
+    :language cobol
+    :feature definition
+    ;; Level numbers in data descriptions - make them stand out
+    ((data_description (level_number) @font-lock-property-face))
+
+    :language cobol  
+    :feature definition
+    ;; Special level 88 for condition names
+    ((level_number_88) @font-lock-property-face)
+    
+    :language cobol
     :feature error
     ((ERROR) @font-lock-warning-face))
   "Tree-sitter font-lock settings for `cobol-ts-mode'.")
@@ -554,10 +633,10 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
     (setq-local comment-start-skip "\\(?:\\*>\\|^\\*\\)[ \t]*")
 
     (setq-local treesit-font-lock-feature-list
-                '((comment string)
-                  (keyword constant number type)
-                  (statement division program-name level-number variable)
-                  (operator delimiter bracket error)))
+                '((comment definition)
+                  (string constant number keyword type)
+		  (builtin division section paragraph control-flow function)
+                  (variable operator delimiter bracket error)))
 
     ;; Font-lock
     (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
