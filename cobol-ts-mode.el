@@ -221,6 +221,36 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
   :safe 'integerp
   :group 'cobol-ts)
 
+(defun cobol-ts-mode--is-top-level-data-p (node _ _ &rest _)
+  "Return t if NODE is a data entry starting with 01, 77, FD, or SD."
+  (let ((text (treesit-node-text node)))
+    (string-match-p (rx bol (0+ space) 
+                        (or "01" "77" "FD" "SD")) 
+                    text)))
+
+(defun cobol-ts-mode--is-sub-level-data-p (node _ _ &rest _)
+  "Return t if NODE is a data entry that is NOT 01, 77, FD, or SD."
+  (let ((text (treesit-node-text node)))
+    (and (string-match-p (rx bol (0+ space) digit) text) ;; Must be a number
+         (not (string-match-p (rx bol (0+ space) 
+                                  (or "01" "77" "FD" "SD")) 
+                              text)))))
+
+
+(defvar cobol-ts-mode--handler-nodes
+  (rx (or "on_exception"      "not_on_exception"
+          "on_size_error"     "not_on_size_error"
+          "on_overflow"       "not_on_overflow"
+          "at_end"            "not_at_end"
+          "eop"               "not_eop"
+          "invalid_key"       "not_invalid_key"
+          "evaluate_header"   
+          "when"              "when_other"
+          "perform_statement_loop"
+          "if_header"         "else_if_header"    "else_header"))
+  "Regex matching COBOL handler nodes that should align with their parent.")
+
+
 (defvar cobol-ts-mode--indent-rules-fixed-format
   `((cobol
      ;; Fixed format: respects traditional COBOL column areas
@@ -228,143 +258,117 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
      ;; Area B (columns 12-72): Statements
 
      ;; Top-level structure
-     ((node-is "^program_definition$") column-0 0)
+     ((node-is "program_definition") column-0 0)
+     ((node-is "function_definition") column-0 0)
 
-     ;; Divisions - start at Area A (column 7, 0-indexed)
-     ((node-is "identification_division") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "environment_division") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "data_division") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "procedure_division") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "function_division") column-0 ,cobol-ts-mode-area-a-column)
+     ;; ====================================================================
+     ;; 1. ZONE A: ANCHORS (Headers)
+     ;; ====================================================================
+     ;; Match explicit DIVISION/SECTION headers by NODE type
+     ((node-is ,(rx (or (seq "_division" eos) 
+                        (seq "_section" eos)))) 
+      column-0 cobol-ts-mode-area-a-column)
+     
+     ;; Match Paragraphs (PROGRAM-ID, FILE-CONTROL, Main Paragraphs) by NODE type
+     ((node-is ,(rx "_paragraph" eos)) 
+      column-0 cobol-ts-mode-area-a-column)
 
-     ;; Sections - also start at Area A
-     ((node-is "configuration_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "input_output_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "file_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "working_storage_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "linkage_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "local_storage_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "screen_section") column-0 ,cobol-ts-mode-area-a-column)
-     ((node-is "report_section") column-0 ,cobol-ts-mode-area-a-column)
+     
+     ;; ====================================================================
+     ;; DATA DIVISION SPECIFICS
+     ;; ====================================================================
 
-     ;; Section headers in procedure division - also Area A
-     ((node-is "section_header") column-0 ,cobol-ts-mode-area-a-column)
+     ;; 1. TOP LEVEL ITEMS (01, 77, FD, SD)
+     ;; These go in Area A (same as the Section Header).
+     ;; We anchor them to the parent (the Section) with 0 offset.
+     ((and (node-is "data_description") 
+           cobol-ts-mode--is-top-level-data-p)
+      parent-bol 0)
+     
+     ;; Also handle File Descriptions (FD/SD) if the grammar names them differently
+     ((node-is "file_description_entry")
+      parent-bol 0)
 
-     ;; Paragraph headers - also Area A
-     ((node-is "paragraph_header") column-0 ,cobol-ts-mode-area-a-column)
+     ;; 2. SUB-LEVEL ITEMS (05, 10, 88, etc.)
+     ;; These go in Area B.
+     ;; Anchor to the Parent (Section) + Indent Offset.
+     ((and (node-is "data_description") 
+           cobol-ts-mode--is-sub-level-data-p)
+      parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Everything else goes to Area B (column 11, which is Area A + 4)
-     ;; Statements under sections
-     ((parent-is "identification_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "environment_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "data_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "procedure_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "function_division") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ;; 3. CLAUSES ON NEW LINES (PIC, VALUE, OCCURS)
+     ;; If you split a definition like:
+     ;; 05 MY-VAR
+     ;;    PIC X.
+     ;; The 'PIC X' is a child of 'data_description'.
+     ((parent-is "data_description") parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Configuration and I/O sections content - Area B
-     ((parent-is "configuration_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "input_output_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ;; 4. FILE DESCRIPTION CHILDREN
+     ;; Inside an FD, usually we indent the BLOCK CONTAINS, LABEL RECORD, etc.
+     ((parent-is "file_description_entry")
+      parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Data description sections content - Area B
-     ((parent-is "working_storage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "file_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "linkage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "local_storage_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "screen_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "report_section") column-0 ,(+ cobol-ts-mode-area-a-column 4))
 
-     ;; Paragraphs in configuration section - Area B
-     ((parent-is "source_computer_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "object_computer_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "special_names_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "repository_paragraph") column-0 ,(+ cobol-ts-mode-area-a-column 4))
 
-     ;; Data and file descriptions - Area B
-     ((parent-is "data_description") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "file_description") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ;; ====================================================================
+     ;; GENERIC BLOCK CONTENT (Zone B)
+     ;; ====================================================================
 
-     ;; Statements under section header - Area B
-     ((parent-is "section_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ;; 1. SECTION CONTENT
+     ;; If we are inside a Section, indent the content.
+     ;; BUT WAIT! Paragraphs are children of Sections too. 
+     ;; Because we have a higher-priority rule ((node-is "_paragraph") parent-bol 0),
+     ;; the paragraphs will stay left. Everything ELSE (variables, etc.) will indent.
+     ((parent-is ,(rx "_section" eos)) parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Statements under paragraph - Area B
-     ((parent-is "paragraph_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
+     ;; 2. PARAGRAPH CONTENT (The most common rule)
+     ;; This handles:
+     ;; - Procedure Division: Statements inside paragraphs.
+     ;; - Environment Division: Clauses inside SOURCE-COMPUTER, FILE-CONTROL.
+     ;; - Identification Division: Text inside AUTHOR, PROGRAM-ID.
+     ((parent-is ,(rx "_paragraph" eos)) parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Perform statements and children - Area B with additional indent
-     ((parent-is "perform_statement_call_proc") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "perform_statement_loop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "perform_procedure") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "perform_option") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "perform_varying") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "perform_test") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ;; 3. DIVISION CONTENT (Direct children)
+     ;; Usually Divisions contain Sections (Zone A). 
+     ;; But sometimes they contain direct code/paragraphs.
+     ((parent-is ,(rx "_division" eos)) parent-bol cobol-ts-mode-indent-offset)
+     
+     ;; ====================================================================
+     ;; PROCEDURE DIVISION: ALIGNMENT (The "Un-indenters")
+     ;; ====================================================================
+     ;; These nodes appear inside a statement but must align with the start.
+     ;; e.g.
+     ;; READ ...
+     ;;    AT END     <-- Matches here (Aligns to READ)
+     ;;       DISPLAY...
+     
+     ;; 1. Terminators (END-IF, END-READ)
+     ;;
+     ((node-is ,(rx (or (seq "end_" (0+ any)) 
+                        (seq "END_" (0+ any))))) 
+      parent-bol 0)
 
-     ;; If-then-else structures - Area B with additional indent
-     ((parent-is "if_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "else_if_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "else_if_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((node-is "else_header") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "else_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ;; 2. Handlers & Headers (ELSE, WHEN, AT END, ON SIZE ERROR)
+     ((node-is ,cobol-ts-mode--handler-nodes) parent-bol 0)
 
-     ;; Evaluate (COBOL's switch/case) - Area B
-     ((parent-is "evaluate_header") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "evaluate_subject") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "when") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "when") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "when_other") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "when_other") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ;; ====================================================================
+     ;; PROCEDURE DIVISION: NESTING (The "Indenters")
+     ;; ====================================================================
 
-     ;; Search statement - Area B
-     ((parent-is "search_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ;; 1. Code inside Handlers
+     ;; If the grammar nests statements inside "at_end" or "else_header" nodes,
+     ;; this rule indents the content.
+     ((parent-is ,cobol-ts-mode--handler-nodes) parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Exception handlers for I/O operations - Area B
-     ((node-is "at_end") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "at_end") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "not_at_end") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "not_at_end") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "not_invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "not_invalid_key") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "eop") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "eop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((node-is "not_eop") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "not_eop") column-0 ,(+ cobol-ts-mode-area-a-column 8))
+     ;; 2. Code inside Main Statements
+     ;; Standard indentation for statements inside IF, PERFORM, READ, etc.
+     ;; We assume the main container ends in "_statement" (e.g. if_statement, read_statement).
+     ((parent-is ,(rx "_statement" eos)) parent-bol cobol-ts-mode-indent-offset)
 
-     ;; Common statements - Area B with additional indent for nested content
-     ((parent-is "accept_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "add_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "call_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "compute_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "delete_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "display_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "divide_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "initialize_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "inspect_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "move_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "multiply_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "read_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "rewrite_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "string_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "subtract_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "unstring_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "write_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-
-     ;; I/O and control flow - Area B
-     ((parent-is "open_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "close_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "goto_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "merge_statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-
-     ;; Generic statement handling - Area B
-     ((node-is "statement") column-0 ,(+ cobol-ts-mode-area-a-column 4))
-     ((parent-is "statement") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-
-     ;; Condition and expression indentation - Area B with additional indent
-     ((parent-is "condition") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "expression") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-     ((parent-is "arithmetic_expression") column-0 ,(+ cobol-ts-mode-area-a-column 8))
-
+     
+     
      ;; Default: Area B
-     (no-node column-0 ,(+ cobol-ts-mode-area-a-column 4))))
+     (no-node column-0 ,(+ cobol-ts-mode-area-a-column cobol-ts-mode-indent-offset))))
   "Tree-sitter indent rules for `cobol-ts-mode' in fixed format.")
 
 (defvar cobol-ts-mode--keywords
@@ -463,61 +467,10 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
      (picture_edit) @font-lock-type-face)
 
     :language cobol
-    :feature type
-    ;; Usage types - expand existing list
-    ([(BINARY) (BINARY_CHAR) (BINARY_SHORT) (BINARY_LONG) 
-      (BINARY_DOUBLE) (BINARY_C_LONG)
-      (COMP) (COMP_1) (COMP_2) (COMP_3) (COMP_4) (COMP_5) (COMP_X)
-      (COMPUTATIONAL)
-      (DISPLAY) (INDEX) (PACKED_DECIMAL) (POINTER)
-      (PROGRAM_POINTER)
-      (SIGNED_SHORT) (SIGNED_INT) (SIGNED_LONG)
-      (UNSIGNED_SHORT) (UNSIGNED_INT) (UNSIGNED_LONG)
-      (NATIONAL) (NATIONAL_EDITED)] @font-lock-type-face)
-
-    :language cobol
     :feature division
-    ([(identification_division)
-      (environment_division)
-      (data_division)
-      (procedure_division)] @font-lock-preprocessor-face)
+    :override t
+    ((identification_division) @font-lock-preprocessor-face)
 
-    :language cobol
-    :feature section
-    ([(configuration_section)
-      (input_output_section)
-      (file_section)
-      (working_storage_section)
-      (local_storage_section)
-      (linkage_section)
-      (report_section)
-      (screen_section)] @font-lock-keyword-face)
-
-
-    :language cobol
-    :feature paragraph
-    ((section_header) @font-lock-keyword-face)
-
-    :language cobol
-    :feature paragraph
-    ((paragraph_header) @font-lock-function-name-face)
-
-    :language cobol
-    :feature builtin
-    ;; Major statement types - use a more visible face
-    ([(accept_statement) (display_statement) (write_statement)
-      (open_statement) (close_statement) (call_statement)
-      (perform_statement_loop) (perform_statement_call_proc)
-      (move_statement) (compute_statement) (initialize_statement)
-      (add_statement) (subtract_statement) (multiply_statement) (divide_statement) (string_statement) (unstring_statement) (inspect_statement) (search_statement) (sort_statement)
-      (merge_statement) (set_statement) (allocate_statement) (delete_statement) (rewrite_statement) (start_statement)
-      (release_statement) (return_statement) (goto_statement)
-      (exit_statement) (stop_statement)] @font-lock-builtin-face)
-
-    :language cobol
-    :feature keyword
-    ;; Data division keywords
-    ([(occurs_clause) (redefines_clause) (picture_clause) (value_of_clause) (usage_clause) (synchronized_clause) (justified_clause) (blank_clause) (sign_clause) (external_clause) (global_clause) (based_clause)] @font-lock-keyword-face)
 
     :language cobol
     :feature keyword
