@@ -1,6 +1,6 @@
 # cobol-ts-mode
 
-> **⚠️ ARCHIVED**: This project is no longer maintained. The tree-sitter implementation for COBOL that this mode relies on is not reliable enough for production use. Development has been discontinued.
+> **⚠️ DISCLAIMER**: This project is a work in progress. The tree-sitter implementation for COBOL that this mode relies on has a few limitation that make it really difficult to built reliable indentation system. Development is incremental. Report any issue you're facing.
 
 A tree-sitter major mode for COBOL in Emacs with full syntax highlighting, indentation, and navigation support.
 
