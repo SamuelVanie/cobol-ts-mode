@@ -93,13 +93,14 @@ Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
 
      ;; Divisions - start at column 0 in free format
      ((node-is "identification_division") parent-bol 0)
+     ((parent-is "identification_division") parent-bol 0)
+
      ((node-is "environment_division") parent-bol 0)
      ((node-is "data_division") parent-bol 0)
      ((node-is "procedure_division") parent-bol 0)
      ((node-is "function_division") parent-bol 0)
 
      ;; Sections - indent from their parent division
-     ((parent-is "identification_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "environment_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "data_division") parent-bol cobol-ts-mode-indent-offset)
      ((parent-is "procedure_division") parent-bol cobol-ts-mode-indent-offset)
@@ -250,23 +251,102 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
           "if_header"         "else_if_header"    "else_header"))
   "Regex matching COBOL handler nodes that should align with their parent.")
 
+(defun cobol-ts--anchor-find-matching-start (node parent _ &rest _)
+  "Anchor to the matching opening node for the current NODE.
+This handles flat structures where IF, body, and END-IF are siblings.
+It counts nested blocks to find the correct start."
+  (let ((current-type (treesit-node-type node))
+        (opener-type nil)
+        (balance 0)
+        (iter (treesit-node-prev-sibling node))
+        (found-pos nil))
+    
+    ;; Determine what we are looking for based on the current node
+    (cond
+     ((member current-type '("END_IF" "else_header"))
+      (setq opener-type "if_header"))
+     ((member current-type '("END_EVALUATE" "when"))
+      (setq opener-type "evaluate_header")))
+    
+    (if (not opener-type)
+        ;; Fallback: if we aren't a closer, just use parent start
+        (treesit-node-start parent)
+      
+      ;; Scan backwards looking for the opener
+      (while (and iter (not found-pos))
+        (let ((type (treesit-node-type iter)))
+          (cond
+           ;; If we see a closer (like another END-IF), increment balance (nested block)
+           ((equal type current-type)
+            (setq balance (1+ balance)))
+           
+           ;; If we see the opener we want
+           ((equal type opener-type)
+            (if (= balance 0)
+                (setq found-pos (treesit-node-start iter))
+              ;; If balance > 0, we just closed a nested block. Decrement.
+              (setq balance (1- balance))))))
+        (setq iter (treesit-node-prev-sibling iter)))
+      
+      ;; Return found position or parent start if syntax is broken
+      (or found-pos (treesit-node-start parent)))))
 
 (defvar cobol-ts-mode--indent-rules-fixed-format
   `((cobol
+     ;; DISCLAIMER, I WORK ON THE PARENT
+     ;; IN THIS TREESITTER IMPLEMENTATION THE CURRENT NODE SEEMS
+     ;; TO ALWAYS BE NIL EXCEPT FOR DATA_DESCRIPTION
+
+     ;; THE RULES THAT ARE NOT PARENT-IS ARE JUST THERE BECAUSE
+     ;; THEY'RE LOGICAL THEY WILL CERTAINLY NOT WORK
+
+     ;; ==============================================================
      ;; Fixed format: respects traditional COBOL column areas
      ;; Area A (columns 8-11): Divisions, sections, paragraphs
      ;; Area B (columns 12-72): Statements
+     ;; ==============================================================
 
-     ;; Top-level structure
-     ((node-is "program_definition") column-0 0)
-     ((node-is "function_definition") column-0 0)
+     ;; identification division for sure
+     ((parent-is "start") column-0 cobol-ts-mode-area-a-column)
+     
+     ((n-p-gp nil "program_definition" "start") column-0 cobol-ts-mode-area-a-column)
+     
+     ((parent-is "identification_division") column-0 cobol-ts-mode-area-a-column)
 
+
+     ;; ---------------------------------------------------------
+     ;; RULE 1: Closing/Dedenting nodes (END-IF, ELSE, WHEN)
+     ;; ---------------------------------------------------------
+     ;; These must align with their opening statement (IF, EVALUATE).
+     ;; We use the custom function to find that opener.
+     ((node-is ,(rx (or "END_IF" "else_header" "END_EVALUATE" "when")))
+      cobol-ts--anchor-find-matching-start 0)
+
+     ;; ---------------------------------------------------------
+     ;; RULE 2: Indenting the Body (After an opener)
+     ;; ---------------------------------------------------------
+     ;; If the PREVIOUS sibling was an opener, we must indent.
+     ;; (e.g. previous line was "IF ...", so this line is body)
+     ((lambda (node _ _ &rest _)
+        (let ((prev (treesit-node-prev-sibling node)))
+          (and prev
+               (member (treesit-node-type prev)
+                       '("if_header" "else_header" "when" "IF" "evaluate_header")))))
+      prev-sibling cobol-ts-mode-indent-offset)
+     
+     ;; ---------------------------------------------------------
+     ;; RULE 3: Continuing the Body (After a statement)
+     ;; ---------------------------------------------------------
+     ;; If the previous sibling was just a normal statement (display, move),
+     ;; align with it. This handles the flat list of statements in a body.
+     ((parent-is "procedure_division") prev-sibling 0)
+     
+     
      ;; ====================================================================
      ;; 1. ZONE A: ANCHORS (Headers)
      ;; ====================================================================
      ;; Match explicit DIVISION/SECTION headers by NODE type
-     ((node-is ,(rx (or (seq "_division" eos) 
-                        (seq "_section" eos)))) 
+     ((node-is ,(rx (seq "_division" eos)))
       column-0 cobol-ts-mode-area-a-column)
      
      ;; Match Paragraphs (PROGRAM-ID, FILE-CONTROL, Main Paragraphs) by NODE type
@@ -277,7 +357,6 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
      ;; ====================================================================
      ;; DATA DIVISION SPECIFICS
      ;; ====================================================================
-
      ;; 1. TOP LEVEL ITEMS (01, 77, FD, SD)
      ;; These go in Area A (same as the Section Header).
      ;; We anchor them to the parent (the Section) with 0 offset.
@@ -309,6 +388,8 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
       parent-bol cobol-ts-mode-indent-offset)
 
 
+     ;; 3. data division's children should be aligned with it 
+     ((n-p-gp nil ,(rx "data_division" eos) "program_definition") column-0 cobol-ts-mode-area-a-column)
 
      ;; ====================================================================
      ;; GENERIC BLOCK CONTENT (Zone B)
@@ -362,8 +443,8 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 
      ;; 2. Code inside Main Statements
      ;; Standard indentation for statements inside IF, PERFORM, READ, etc.
-     ;; We assume the main container ends in "_statement" (e.g. if_statement, read_statement).
-     ((parent-is ,(rx "_statement" eos)) parent-bol cobol-ts-mode-indent-offset)
+     ;; We assume the main container ends in "_header" (e.g. if_header, read_header).
+     ((parent-is ,(rx "_header" eos)) parent-bol cobol-ts-mode-indent-offset)
 
      
      
@@ -581,9 +662,6 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
 		  (builtin division section paragraph control-flow function)
                   (variable operator delimiter bracket error)))
 
-    ;; Font-lock
-    (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
-
     ;; fallback for the different keywords
     (font-lock-add-keywords
      'cobol-ts-mode
@@ -591,7 +669,9 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
        (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)
        (,(regexp-opt cobol-ts-mode--operators 'words) . font-lock-builtin-face)))
 
-    
+    ;; Font-lock
+    (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
+
     ;; Indentation - use fixed format rules
     ;; Note: The tree-sitter grammar only supports fixed-format COBOL
     (setq-local treesit-simple-indent-rules
