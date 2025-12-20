@@ -41,7 +41,8 @@
   "Install the COBOL grammar for tree-sitter."
   (interactive)
   (add-to-list 'treesit-language-source-alist
-               '(cobol . ("https://github.com/yutaro-sakamoto/tree-sitter-cobol" "main" "src")))
+               '(cobol .
+		       ("https://github.com/yutaro-sakamoto/tree-sitter-cobol" "main" "src")))
   (treesit-install-language-grammar 'cobol))
 
 (defvar cobol-ts-mode--syntax-table
@@ -155,7 +156,8 @@ It counts nested blocks to find the correct start."
      ;; identification division for sure
      ((parent-is "start") column-0 cobol-ts-mode-area-a-column)
      
-     ((n-p-gp nil "program_definition" "start") column-0 cobol-ts-mode-area-a-column)
+     ((n-p-gp nil "program_definition" "start")
+      column-0 cobol-ts-mode-area-a-column)
      
      ((parent-is "identification_division") column-0 cobol-ts-mode-area-a-column)
 
@@ -206,7 +208,8 @@ It counts nested blocks to find the correct start."
 
 
      ;; 3. data division's children should be aligned with it 
-     ((n-p-gp nil ,(rx "data_division" eos) "program_definition") column-0 cobol-ts-mode-area-a-column)
+     ((n-p-gp nil ,(rx "data_division" eos) "program_definition")
+      column-0 cobol-ts-mode-area-a-column)
 
      ;; ====================================================================
      ;; GENERIC BLOCK CONTENT (Zone B)
