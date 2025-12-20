@@ -7,7 +7,7 @@ A tree-sitter major mode for COBOL in Emacs with full syntax highlighting, inden
 ## Features
 
 - **Tree-sitter Support**: Full AST-based syntax highlighting and indentation for fixed-format COBOL
-- **Free Format Support**: Regex-based keyword highlighting for free-format COBOL (>>SOURCE FORMAT FREE)
+- **Free Format Support**: Regex-based keyword highlighting for free-format COBOL (>>SOURCE FORMAT FREE). Only KEYWORDS are taken into account for now
 - **Syntax Highlighting**: Comprehensive keyword, string, number, and comment highlighting
 - **Smart Indentation**: Automatic indentation for divisions, sections, paragraphs, and statements
 - **Navigation**: Jump between divisions, sections, and paragraphs
