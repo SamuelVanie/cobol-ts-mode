@@ -44,13 +44,6 @@
                '(cobol . ("https://github.com/yutaro-sakamoto/tree-sitter-cobol" "main" "src")))
   (treesit-install-language-grammar 'cobol))
 
-(defun cobol-ts--free-format-p ()
-  "Check if the current buffer uses free format COBOL.
-Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
-  (save-excursion
-    (goto-char (point-min))
-    (re-search-forward "^>>SOURCE\\s-+\\(?:FORMAT\\s-+\\)?FREE" nil t)))
-
 (defvar cobol-ts-mode--syntax-table
   (let ((table (make-syntax-table)))
     ;; Operators and arithmetic symbols as punctuation
@@ -83,137 +76,6 @@ Returns t if the buffer contains >>SOURCE FORMAT FREE directive."
     table)
   "Syntax table for `cobol-ts-mode'.")
 
-(defvar cobol-ts-mode--indent-rules-free-format
-  `((cobol
-     ;; Free format: logical indentation only, no column restrictions
-
-     ;; Top-level structure - no indentation
-     ((node-is "program_definition") column-0 0)
-     ((node-is "source_element") column-0 0)
-
-     ;; Divisions - start at column 0 in free format
-     ((node-is "identification_division") parent-bol 0)
-     ((parent-is "identification_division") parent-bol 0)
-
-     ((node-is "environment_division") parent-bol 0)
-     ((node-is "data_division") parent-bol 0)
-     ((node-is "procedure_division") parent-bol 0)
-     ((node-is "function_division") parent-bol 0)
-
-     ;; Sections - indent from their parent division
-     ((parent-is "environment_division") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "data_division") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "procedure_division") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "function_division") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Configuration and I/O sections
-     ((parent-is "configuration_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "input_output_section") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Data description sections
-     ((parent-is "working_storage_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "file_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "linkage_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "local_storage_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "screen_section") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "report_section") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Paragraphs in configuration section
-     ((parent-is "source_computer_paragraph") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "object_computer_paragraph") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "special_names_paragraph") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "repository_paragraph") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Data and file descriptions
-     ((parent-is "data_description") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "file_description") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Section headers - align with parent
-     ((node-is "section_header") parent-bol 0)
-     ((parent-is "section_header") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Paragraph headers - align with parent
-     ((node-is "paragraph_header") parent-bol 0)
-     ((parent-is "paragraph_header") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Perform statements
-     ((parent-is "perform_statement_call_proc") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "perform_statement_loop") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "perform_procedure") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "perform_option") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "perform_varying") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "perform_test") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; If-then-else structures
-     ((parent-is "if_header") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "else_if_header") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "else_if_header") parent-bol 0)
-     ((node-is "else_header") parent-bol 0)
-     ((parent-is "else_header") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Evaluate (COBOL's switch/case)
-     ((parent-is "evaluate_header") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "evaluate_subject") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "when") parent-bol 0)
-     ((parent-is "when") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "when_other") parent-bol 0)
-     ((parent-is "when_other") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Search statement
-     ((parent-is "search_statement") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Exception handlers for I/O operations
-     ((node-is "at_end") parent-bol 0)
-     ((parent-is "at_end") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "not_at_end") parent-bol 0)
-     ((parent-is "not_at_end") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "invalid_key") parent-bol 0)
-     ((parent-is "invalid_key") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "not_invalid_key") parent-bol 0)
-     ((parent-is "not_invalid_key") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "eop") parent-bol 0)
-     ((parent-is "eop") parent-bol cobol-ts-mode-indent-offset)
-     ((node-is "not_eop") parent-bol 0)
-     ((parent-is "not_eop") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Common statements
-     ((parent-is "accept_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "add_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "call_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "compute_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "delete_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "display_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "divide_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "initialize_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "inspect_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "move_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "multiply_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "read_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "rewrite_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "string_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "subtract_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "unstring_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "write_statement") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; I/O and control flow
-     ((parent-is "open_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "close_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "goto_statement") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "merge_statement") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Generic statement handling - catch any statement nodes we might have missed
-     ((node-is "statement") parent-bol 0)
-     ((parent-is "statement") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Condition and expression indentation
-     ((parent-is "condition") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "expression") parent-bol cobol-ts-mode-indent-offset)
-     ((parent-is "arithmetic_expression") parent-bol cobol-ts-mode-indent-offset)
-
-     ;; Default: no additional indentation
-     (no-node parent-bol 0)))
-  "Tree-sitter indent rules for `cobol-ts-mode' in free format.")
-
 (defcustom cobol-ts-mode-area-a-column 7
   "Column number for Area A in fixed format COBOL (0-indexed).
 Area A is where divisions, sections, and paragraphs start.
@@ -237,19 +99,6 @@ Traditional COBOL uses column 7 (8th column, after the indicator area)."
                                   (or "01" "77" "FD" "SD")) 
                               text)))))
 
-
-(defvar cobol-ts-mode--handler-nodes
-  (rx (or "on_exception"      "not_on_exception"
-          "on_size_error"     "not_on_size_error"
-          "on_overflow"       "not_on_overflow"
-          "at_end"            "not_at_end"
-          "eop"               "not_eop"
-          "invalid_key"       "not_invalid_key"
-          "evaluate_header"   
-          "when"              "when_other"
-          "perform_statement_loop"
-          "if_header"         "else_if_header"    "else_header"))
-  "Regex matching COBOL handler nodes that should align with their parent.")
 
 (defun cobol-ts--anchor-find-matching-start (node parent _ &rest _)
   "Anchor to the matching opening node for the current NODE.
@@ -297,9 +146,6 @@ It counts nested blocks to find the correct start."
      ;; IN THIS TREESITTER IMPLEMENTATION THE CURRENT NODE SEEMS
      ;; TO ALWAYS BE NIL EXCEPT FOR DATA_DESCRIPTION
 
-     ;; THE RULES THAT ARE NOT PARENT-IS ARE JUST THERE BECAUSE
-     ;; THEY'RE LOGICAL THEY WILL CERTAINLY NOT WORK
-
      ;; ==============================================================
      ;; Fixed format: respects traditional COBOL column areas
      ;; Area A (columns 8-11): Divisions, sections, paragraphs
@@ -313,35 +159,6 @@ It counts nested blocks to find the correct start."
      
      ((parent-is "identification_division") column-0 cobol-ts-mode-area-a-column)
 
-
-     ;; ---------------------------------------------------------
-     ;; RULE 1: Closing/Dedenting nodes (END-IF, ELSE, WHEN)
-     ;; ---------------------------------------------------------
-     ;; These must align with their opening statement (IF, EVALUATE).
-     ;; We use the custom function to find that opener.
-     ((node-is ,(rx (or "END_IF" "else_header" "END_EVALUATE" "when")))
-      cobol-ts--anchor-find-matching-start 0)
-
-     ;; ---------------------------------------------------------
-     ;; RULE 2: Indenting the Body (After an opener)
-     ;; ---------------------------------------------------------
-     ;; If the PREVIOUS sibling was an opener, we must indent.
-     ;; (e.g. previous line was "IF ...", so this line is body)
-     ((lambda (node _ _ &rest _)
-        (let ((prev (treesit-node-prev-sibling node)))
-          (and prev
-               (member (treesit-node-type prev)
-                       '("if_header" "else_header" "when" "IF" "evaluate_header")))))
-      prev-sibling cobol-ts-mode-indent-offset)
-     
-     ;; ---------------------------------------------------------
-     ;; RULE 3: Continuing the Body (After a statement)
-     ;; ---------------------------------------------------------
-     ;; If the previous sibling was just a normal statement (display, move),
-     ;; align with it. This handles the flat list of statements in a body.
-     ((parent-is "procedure_division") prev-sibling 0)
-     
-     
      ;; ====================================================================
      ;; 1. ZONE A: ANCHORS (Headers)
      ;; ====================================================================
@@ -364,8 +181,8 @@ It counts nested blocks to find the correct start."
            cobol-ts-mode--is-top-level-data-p)
       parent-bol 0)
      
-     ;; Also handle File Descriptions (FD/SD) if the grammar names them differently
-     ((node-is "file_description_entry")
+     ;; handle file descriptions
+     ((node-is "file_description")
       parent-bol 0)
 
      ;; 2. SUB-LEVEL ITEMS (05, 10, 88, etc.)
@@ -397,59 +214,18 @@ It counts nested blocks to find the correct start."
 
      ;; 1. SECTION CONTENT
      ;; If we are inside a Section, indent the content.
-     ;; BUT WAIT! Paragraphs are children of Sections too. 
      ;; Because we have a higher-priority rule ((node-is "_paragraph") parent-bol 0),
      ;; the paragraphs will stay left. Everything ELSE (variables, etc.) will indent.
      ((parent-is ,(rx "_section" eos)) parent-bol cobol-ts-mode-indent-offset)
 
-     ;; 2. PARAGRAPH CONTENT (The most common rule)
-     ;; This handles:
-     ;; - Procedure Division: Statements inside paragraphs.
-     ;; - Environment Division: Clauses inside SOURCE-COMPUTER, FILE-CONTROL.
-     ;; - Identification Division: Text inside AUTHOR, PROGRAM-ID.
-     ((parent-is ,(rx "_paragraph" eos)) parent-bol cobol-ts-mode-indent-offset)
-
      ;; 3. DIVISION CONTENT (Direct children)
-     ;; Usually Divisions contain Sections (Zone A). 
-     ;; But sometimes they contain direct code/paragraphs.
-     ((parent-is ,(rx "_division" eos)) parent-bol cobol-ts-mode-indent-offset)
+     ;; First child should be indented
+     ;; But what happens ? Every child seems to be considered the first child
+     ;; There's really something wrong with this treesitter implementation
+     ;; or is it just me that has skill issues ?
+     ;; ((match nil ,(rx "_division" eos) nil 0 0) parent-bol cobol-ts-mode-indent-offset)
      
-     ;; ====================================================================
-     ;; PROCEDURE DIVISION: ALIGNMENT (The "Un-indenters")
-     ;; ====================================================================
-     ;; These nodes appear inside a statement but must align with the start.
-     ;; e.g.
-     ;; READ ...
-     ;;    AT END     <-- Matches here (Aligns to READ)
-     ;;       DISPLAY...
-     
-     ;; 1. Terminators (END-IF, END-READ)
-     ;;
-     ((node-is ,(rx (or (seq "end_" (0+ any)) 
-                        (seq "END_" (0+ any))))) 
-      parent-bol 0)
-
-     ;; 2. Handlers & Headers (ELSE, WHEN, AT END, ON SIZE ERROR)
-     ((node-is ,cobol-ts-mode--handler-nodes) parent-bol 0)
-
-     ;; ====================================================================
-     ;; PROCEDURE DIVISION: NESTING (The "Indenters")
-     ;; ====================================================================
-
-     ;; 1. Code inside Handlers
-     ;; If the grammar nests statements inside "at_end" or "else_header" nodes,
-     ;; this rule indents the content.
-     ((parent-is ,cobol-ts-mode--handler-nodes) parent-bol cobol-ts-mode-indent-offset)
-
-     ;; 2. Code inside Main Statements
-     ;; Standard indentation for statements inside IF, PERFORM, READ, etc.
-     ;; We assume the main container ends in "_header" (e.g. if_header, read_header).
-     ((parent-is ,(rx "_header" eos)) parent-bol cobol-ts-mode-indent-offset)
-
-     
-     
-     ;; Default: Area B
-     (no-node column-0 ,(+ cobol-ts-mode-area-a-column cobol-ts-mode-indent-offset))))
+     ))
   "Tree-sitter indent rules for `cobol-ts-mode' in fixed format.")
 
 (defvar cobol-ts-mode--keywords
@@ -676,6 +452,8 @@ It counts nested blocks to find the correct start."
     ;; Note: The tree-sitter grammar only supports fixed-format COBOL
     (setq-local treesit-simple-indent-rules
                 cobol-ts-mode--indent-rules-fixed-format)
+    (setq-local indent-tabs-mode nil)
+    (setq-local tab-stop-list '(7 11 15))
 
     ;; Navigation
     (setq-local treesit-defun-type-regexp
