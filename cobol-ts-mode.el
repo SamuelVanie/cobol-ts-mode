@@ -57,7 +57,7 @@
     (modify-syntax-entry ?&   "."     table)
     (modify-syntax-entry ?|   "."     table)
 
-    ;; could be in variable's names
+    ;; ;; could be in variable's names
     (modify-syntax-entry ?-   "w"     table)
     (modify-syntax-entry ?_ "w" table)
     
@@ -299,124 +299,125 @@ It counts nested blocks to find the correct start."
   '(
     :language cobol
     :feature comment
-    ((comment) @font-lock-comment-face)
+    ((start (comment) @font-lock-comment-face))
 
-    :language cobol
-    :feature string
-    ([(string) (h_string) (x_string) (n_string)] @font-lock-string-face)
+    ;; :language cobol
+    ;; :feature string
+    ;; ([(string) (h_string) (x_string) (n_string)] @font-lock-string-face)
 
-    :language cobol
-    :feature number
-    ([(integer) (decimal) (number)] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature number
+    ;; ([(integer) (decimal) (number)] @font-lock-constant-face)
 
-    :language cobol
-    :feature operator
-    (["+" "-" "*" "/" "**" "=" ">" "<" ">=" "<="] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature operator
+    ;; (["+" "-" "*" "/" "**" "=" ">" "<" ">=" "<="] @font-lock-constant-face)
 
-    :language cobol
-    :feature delimiter
-    (["." "," ";" ":"] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature delimiter
+    ;; (["." "," ";" ":"] @font-lock-constant-face)
 
-    :language cobol
-    :feature type
-    ((picture_clause) @font-lock-type-face
-     (picture_x) @font-lock-type-face
-     (picture_n) @font-lock-type-face
-     (picture_9) @font-lock-type-face
-     (picture_a) @font-lock-type-face
-     (picture_edit) @font-lock-type-face)
+    ;; :language cobol
+    ;; :feature type
+    ;; ((picture_clause) @font-lock-type-face
+    ;;  (picture_x) @font-lock-type-face
+    ;;  (picture_n) @font-lock-type-face
+    ;;  (picture_9) @font-lock-type-face
+    ;;  (picture_a) @font-lock-type-face
+    ;;  (picture_edit) @font-lock-type-face)
 
-    :language cobol
-    :feature division
-    :override t
-    ((identification_division) @font-lock-preprocessor-face)
-
-
-    :language cobol
-    :feature keyword
-    ;; Scope terminators - important for readability
-    ([(END_IF) (END_PERFORM) (END_EVALUATE) (END_READ)
-      (END_ACCEPT) (END_ADD) (END_CALL) (END_COMPUTE)
-      (END_DELETE) (END_DISPLAY) (END_DIVIDE) (END_MULTIPLY)
-      (END_RETURN) (END_REWRITE) (END_SEARCH) (END_START)
-      (END_STRING) (END_SUBTRACT) (END_UNSTRING) (END_WRITE)] @font-lock-keyword-face)
+    ;; :language cobol
+    ;; :feature division
+    ;; :override t
+    ;; ((identification_division) @font-lock-preprocessor-face)
 
 
-    :language cobol
-    :feature control-flow
-    ;; Conditional structures
-    ([(if_header) (else_if_header) (else_header)
-      (evaluate_header) (when) (when_other)] @font-lock-keyword-face)
-
-    :language cobol
-    :feature control-flow
-    ;; Loop structures
-    ([(perform_statement_loop) (perform_statement_call_proc)
-      (perform_varying) (perform_test)] @font-lock-keyword-face)
-
-    :language cobol
-    :feature control-flow
-    ;; Exception handlers
-    ([(on_exception) (not_on_exception)
-      (on_size_error) (not_on_size_error)
-      (on_overflow) (not_on_overflow)
-      (at_end) (not_at_end)
-      (eop) (not_eop)
-      (invalid_key) (not_invalid_key)] @font-lock-warning-face)
-
-    :language cobol
-    :feature control-flow
-    ;; Control transfer
-    ([(goto_statement) (goback_statement) (exit_statement)
-      (stop_statement) (next_sentence_statement)] @font-lock-keyword-face)
+    ;; :language cobol
+    ;; :feature keyword
+    ;; ;; Scope terminators - important for readability
+    ;; ([(END_IF) (END_PERFORM) (END_EVALUATE) (END_READ)
+    ;;   (END_ACCEPT) (END_ADD) (END_CALL) (END_COMPUTE)
+    ;;   (END_DELETE) (END_DISPLAY) (END_DIVIDE) (END_MULTIPLY)
+    ;;   (END_RETURN) (END_REWRITE) (END_SEARCH) (END_START)
+    ;;   (END_STRING) (END_SUBTRACT) (END_UNSTRING) (END_WRITE)] @font-lock-keyword-face)
 
 
-    :language cobol
-    :feature constant
-    ;; Figurative constants
-    ([(SPACE) (ZERO) (ZEROS)
-      (HIGH_VALUE) (LOW_VALUE)
-      (QUOTE) (TOK_NULL)
-      (TRUE) (FALSE)] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature control-flow
+    ;; ;; Conditional structures
+    ;; ([(if_header) (else_if_header) (else_header)
+    ;;   (evaluate_header) (when) (when_other)] @font-lock-keyword-face)
 
-    :language cobol
-    :feature constant
-    ;; Special identifiers
-    ([(POSITIVE) (NEGATIVE) (ALPHABETIC) (ALPHABETIC_LOWER) (ALPHABETIC_UPPER)
-      (ALPHANUMERIC) (ALPHANUMERIC_EDITED) (NUMERIC) (NUMERIC_EDITED)
-      (OMITTED)] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature control-flow
+    ;; ;; Loop structures
+    ;; ([(perform_statement_loop) (perform_statement_call_proc)
+    ;;   (perform_varying) (perform_test)] @font-lock-keyword-face)
 
-    :language cobol
-    :feature constant
-    ;; Reserved words with constant-like meaning
-    ([(FILLER)] @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature control-flow
+    ;; ;; Exception handlers
+    ;; ([(on_exception) (not_on_exception)
+    ;;   (on_size_error) (not_on_size_error)
+    ;;   (on_overflow) (not_on_overflow)
+    ;;   (at_end) (not_at_end)
+    ;;   (eop) (not_eop)
+    ;;   (invalid_key) (not_invalid_key)] @font-lock-warning-face)
 
-    :language cobol
-    :feature variable
-    ;; Special program identifiers
-    ((program_name) @font-lock-constant-face)
+    ;; :language cobol
+    ;; :feature control-flow
+    ;; ;; Control transfer
+    ;; ([(goto_statement) (goback_statement) (exit_statement)
+    ;;   (stop_statement) (next_sentence_statement)] @font-lock-keyword-face)
 
-    :language cobol
-    :feature function
-    ;; Function names as constants (built-in function keywords)
-    ([(CURRENT_DATE_FUNC) (LOCALE_DT_FUNC) (LOWER_CASE_FUNC)
-      (UPPER_CASE_FUNC) (REVERSE_FUNC) (TRIM_FUNCTION)
-      (CONCATENATE_FUNC) (NUMVALC_FUNC) (SUBSTITUTE_FUNC)
-      (SUBSTITUTE_CASE_FUNC) (WHEN_COMPILED_FUNC)] @font-lock-function-name-face)
 
-    :language cobol
-    :feature definition
-    ;; Level numbers in data descriptions - make them stand out
-    ((data_description (level_number) @font-lock-preprocessor-face))
+    ;; :language cobol
+    ;; :feature constant
+    ;; ;; Figurative constants
+    ;; ([(SPACE) (ZERO) (ZEROS)
+    ;;   (HIGH_VALUE) (LOW_VALUE)
+    ;;   (QUOTE) (TOK_NULL)
+    ;;   (TRUE) (FALSE)] @font-lock-constant-face)
 
-    :language cobol  
-    :feature definition
-    ;; Special level 88 for condition names
-    ((level_number_88) @font-lock-preprocessor-face)
+    ;; :language cobol
+    ;; :feature constant
+    ;; ;; Special identifiers
+    ;; ([(POSITIVE) (NEGATIVE) (ALPHABETIC) (ALPHABETIC_LOWER) (ALPHABETIC_UPPER)
+    ;;   (ALPHANUMERIC) (ALPHANUMERIC_EDITED) (NUMERIC) (NUMERIC_EDITED)
+    ;;   (OMITTED)] @font-lock-constant-face)
+
+    ;; :language cobol
+    ;; :feature constant
+    ;; ;; Reserved words with constant-like meaning
+    ;; ([(FILLER)] @font-lock-constant-face)
+
+    ;; :language cobol
+    ;; :feature variable
+    ;; ;; Special program identifiers
+    ;; ((program_name) @font-lock-constant-face)
+
+    ;; :language cobol
+    ;; :feature function
+    ;; ;; Function names as constants (built-in function keywords)
+    ;; ([(CURRENT_DATE_FUNC) (LOCALE_DT_FUNC) (LOWER_CASE_FUNC)
+    ;;   (UPPER_CASE_FUNC) (REVERSE_FUNC) (TRIM_FUNCTION)
+    ;;   (CONCATENATE_FUNC) (NUMVALC_FUNC) (SUBSTITUTE_FUNC)
+    ;;   (SUBSTITUTE_CASE_FUNC) (WHEN_COMPILED_FUNC)] @font-lock-function-name-face)
+
+    ;; :language cobol
+    ;; :feature definition
+    ;; ;; Level numbers in data descriptions - make them stand out
+    ;; ((data_description (level_number) @font-lock-preprocessor-face))
+
+    ;; :language cobol  
+    ;; :feature definition
+    ;; ;; Special level 88 for condition names
+    ;; ((level_number_88) @font-lock-preprocessor-face)
     
-    :language cobol
-    :feature error
-    ((ERROR) @font-lock-warning-face))
+    ;; :language cobol
+    ;; :feature error
+    ;; ((ERROR) @font-lock-warning-face)
+    )
   "Tree-sitter font-lock settings for `cobol-ts-mode'.")
 
 ;;;###autoload
@@ -431,26 +432,28 @@ It counts nested blocks to find the correct start."
     (treesit-parser-create 'cobol)
 
     ;; Comments
-    (setq-local comment-start "*> ")
-    (setq-local comment-end "")
-    (setq-local comment-start-skip "\\(?:\\*>\\|^\\*\\)[ \t]*")
+    ;; (setq-local comment-start "*> ")
+    ;; (setq-local comment-end "")
+    ;; (setq-local comment-start-skip "\\(?:\\*>\\|^\\*\\)[ \t]*")
 
-    (setq-local treesit-font-lock-feature-list
-                '((comment definition)
-                  (string constant number keyword type)
-		  (builtin division section paragraph control-flow function)
-                  (variable operator delimiter bracket error)))
+    ;; (setq-local treesit-font-lock-feature-list
+    ;;             '((comment)
+    ;;               (string constant number keyword type)
+    ;; 		  (builtin division section paragraph control-flow function)
+    ;;               (variable operator delimiter bracket error)
+    ;; 		  ))
+
+
+    ;; Font-lock
+    (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
 
     ;; fallback for the different keywords
     (font-lock-add-keywords
      'cobol-ts-mode
      `((,(regexp-opt cobol-ts-mode--keywords 'words) . font-lock-keyword-face)
-       (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)
-       (,(regexp-opt cobol-ts-mode--operators 'words) . font-lock-builtin-face)))
+       (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)))
 
-    ;; Font-lock
-    (setq-local treesit-font-lock-settings (apply #'treesit-font-lock-rules cobol-ts-mode--font-lock-settings))
-
+    
     ;; Indentation - use fixed format rules
     ;; Note: The tree-sitter grammar only supports fixed-format COBOL
     (setq-local treesit-simple-indent-rules
@@ -472,11 +475,8 @@ It counts nested blocks to find the correct start."
 
     (treesit-major-mode-setup)))
 
-;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cob\\'" . cobol-ts-mode))
-;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cbl\\'" . cobol-ts-mode))
-;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.cobol\\'" . cobol-ts-mode))
 
 (provide 'cobol-ts-mode)
