@@ -42,7 +42,7 @@
   (interactive)
   (add-to-list 'treesit-language-source-alist
                '(cobol .
-		       ("https://github.com/yutaro-sakamoto/tree-sitter-cobol" "main" "src")))
+		       ("https://github.com/SamuelVanie/tree-sitter-cobol" "main" "src")))
   (treesit-install-language-grammar 'cobol))
 
 (defvar cobol-ts-mode--syntax-table
