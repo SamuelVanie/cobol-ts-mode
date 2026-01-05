@@ -31,11 +31,6 @@
   :safe 'integerp
   :group 'cobol-ts)
 
-;; The grammar defines the language as 'COBOL' (uppercase), so the exported
-;; symbol is 'tree_sitter_COBOL', but Emacs expects 'tree_sitter_cobol'.
-(add-to-list 'treesit-load-name-override-list
-             '(cobol "libtree-sitter-cobol" "tree_sitter_COBOL"))
-
 ;;;###autoload
 (defun cobol-ts-install-grammar ()
   "Install the COBOL grammar for tree-sitter."
@@ -303,7 +298,7 @@ It counts nested blocks to find the correct start."
   '(
     :language cobol
     :feature comment
-    ((start (comment) @font-lock-comment-face))
+    ((comment) @font-lock-comment-face)
 
     :language cobol
     :feature string
@@ -320,15 +315,16 @@ It counts nested blocks to find the correct start."
     :language cobol
     :feature delimiter
     (["." "," ";" ":"] @font-lock-constant-face)
-
+    
     :language cobol
     :feature type
-    ((picture_clause) @font-lock-type-face
-     (picture_x) @font-lock-type-face
-     (picture_n) @font-lock-type-face
-     (picture_9) @font-lock-type-face
-     (picture_a) @font-lock-type-face
-     (picture_edit) @font-lock-type-face)
+    ((data_description
+      [(picture_clause) @font-lock-type-face
+       (picture_x) @font-lock-type-face
+       (picture_n) @font-lock-type-face
+       (picture_9) @font-lock-type-face
+       (picture_a) @font-lock-type-face
+       (picture_edit) @font-lock-type-face]))
 
     :language cobol
     :feature division
@@ -452,10 +448,10 @@ It counts nested blocks to find the correct start."
 		  ))
 
     ;; fallback for the different keywords
-    (font-lock-add-keywords
-     'cobol-ts-mode
-     `((,(regexp-opt cobol-ts-mode--keywords 'words) . font-lock-keyword-face)
-       (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)))
+    ;; (font-lock-add-keywords
+    ;;  'cobol-ts-mode
+    ;;  `((,(regexp-opt cobol-ts-mode--keywords 'words) . font-lock-keyword-face)
+    ;;    (,(regexp-opt cobol-ts-mode--constants 'words) . font-lock-constant-face)))
 
     
     ;; Indentation - use fixed format rules
